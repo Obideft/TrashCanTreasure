@@ -8,6 +8,35 @@
   const canvas = document.getElementById("game");
   const ctx = canvas.getContext("2d");
 
+  // UI DOM Elements
+  const startMenuEl = document.getElementById("start-menu");
+  const pauseMenuEl = document.getElementById("pause-menu");
+  const gameOverEl = document.getElementById("gameover-menu");
+  const menuBestScore = document.getElementById("menu-best-score");
+  const modeDesktopBtn = document.getElementById("mode-desktop-btn");
+  const modeMobileBtn = document.getElementById("mode-mobile-btn");
+  const pauseModeDesktopBtn = document.getElementById("pause-mode-desktop-btn");
+  const pauseModeMobileBtn = document.getElementById("pause-mode-mobile-btn");
+  const instructionDesktop = document.getElementById("instruction-desktop");
+  const instructionMobile = document.getElementById("instruction-mobile");
+  const btnPlay = document.getElementById("btn-play");
+  const btnFullscreenMenu = document.getElementById("btn-fullscreen-menu");
+  const btnFullscreenPause = document.getElementById("btn-fullscreen-pause");
+  const btnTouchFullscreen = document.getElementById("btn-touch-fullscreen");
+  const btnTouchPause = document.getElementById("btn-touch-pause");
+  const btnTouchJump = document.getElementById("btn-touch-jump");
+  const btnResume = document.getElementById("btn-resume");
+  const btnRestartPause = document.getElementById("btn-restart-pause");
+  const btnMainMenuPause = document.getElementById("btn-main-menu-pause");
+  const btnRestartGo = document.getElementById("btn-restart-go");
+  const btnMainMenuGo = document.getElementById("btn-main-menu-go");
+  const btnDismissOrientation = document.getElementById("btn-dismiss-orientation");
+
+  const goScore = document.getElementById("go-score");
+  const goCoins = document.getElementById("go-coins");
+  const goDistance = document.getElementById("go-distance");
+  const goBest = document.getElementById("go-best");
+
   const images = {
     sheet1: null,
     sheet2: null,
@@ -123,6 +152,15 @@
     sparks: [],
   };
 
+  // Control Mode state: 'desktop' or 'mobile'
+  let controlMode = localStorage.getItem("tct-control-mode");
+  if (!controlMode) {
+    const hasTouch = ("ontouchstart" in window) || (navigator.maxTouchPoints > 0) || window.matchMedia("(pointer: coarse)").matches;
+    controlMode = hasTouch ? "mobile" : "desktop";
+  }
+
+  let orientationDismissed = false;
+
   function createPlayer() {
     return {
       x: 168,
@@ -170,6 +208,7 @@
     );
   }
 
+  // Web Audio procedural sound synthesizer
   function ensureAudio() {
     if (audioCtx) return;
     try {
@@ -183,17 +222,19 @@
 
   function beep(freq, dur, type, gain) {
     if (!audioCtx) return;
-    const t0 = audioCtx.currentTime;
-    const osc = audioCtx.createOscillator();
-    const g = audioCtx.createGain();
-    osc.type = type || "square";
-    osc.frequency.setValueAtTime(freq, t0);
-    g.gain.setValueAtTime(gain || 0.05, t0);
-    g.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
-    osc.connect(g);
-    g.connect(audioCtx.destination);
-    osc.start(t0);
-    osc.stop(t0 + dur);
+    try {
+      const t0 = audioCtx.currentTime;
+      const osc = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+      osc.type = type || "square";
+      osc.frequency.setValueAtTime(freq, t0);
+      g.gain.setValueAtTime(gain || 0.05, t0);
+      g.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
+      osc.connect(g);
+      g.connect(audioCtx.destination);
+      osc.start(t0);
+      osc.stop(t0 + dur);
+    } catch (e) {}
   }
 
   function sfx(kind) {
@@ -213,6 +254,115 @@
       beep(392, 0.1, "square", 0.04);
       beep(523, 0.16, "square", 0.04);
     }
+  }
+
+  // Mode and Overlay Management
+  function showOverlay(overlayEl) {
+    [startMenuEl, pauseMenuEl, gameOverEl].forEach((el) => {
+      if (el) {
+        if (el === overlayEl) el.classList.add("active");
+        else el.classList.remove("active");
+      }
+    });
+  }
+
+  function hideAllOverlays() {
+    [startMenuEl, pauseMenuEl, gameOverEl].forEach((el) => {
+      if (el) el.classList.remove("active");
+    });
+  }
+
+  function updateBestScoreDisplays() {
+    const bestVal = Math.floor(world.best);
+    if (menuBestScore) menuBestScore.textContent = String(bestVal);
+    if (goBest) goBest.textContent = String(bestVal);
+  }
+
+  function setControlMode(mode) {
+    controlMode = mode === "mobile" ? "mobile" : "desktop";
+    localStorage.setItem("tct-control-mode", controlMode);
+
+    const isMob = controlMode === "mobile";
+    document.body.classList.remove("mode-desktop", "mode-mobile");
+    document.body.classList.add("mode-" + controlMode);
+
+    if (modeDesktopBtn) modeDesktopBtn.classList.toggle("active", !isMob);
+    if (modeMobileBtn) modeMobileBtn.classList.toggle("active", isMob);
+    if (pauseModeDesktopBtn) pauseModeDesktopBtn.classList.toggle("active", !isMob);
+    if (pauseModeMobileBtn) pauseModeMobileBtn.classList.toggle("active", isMob);
+
+    if (instructionDesktop) instructionDesktop.classList.toggle("hidden", isMob);
+    if (instructionMobile) instructionMobile.classList.toggle("hidden", !isMob);
+
+    checkOrientation();
+  }
+
+  // Fullscreen support
+  function isFullscreen() {
+    return !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement);
+  }
+
+  function toggleFullscreen() {
+    const root = document.getElementById("game-root") || document.documentElement;
+    if (!isFullscreen()) {
+      if (root.requestFullscreen) {
+        root.requestFullscreen().catch(() => {});
+      } else if (root.webkitRequestFullscreen) {
+        root.webkitRequestFullscreen();
+      } else if (root.msRequestFullscreen) {
+        root.msRequestFullscreen();
+      }
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen().catch(() => {});
+      } else if (document.webkitExitFullscreen) {
+        document.webkitExitFullscreen();
+      } else if (document.msExitFullscreen) {
+        document.msExitFullscreen();
+      }
+    }
+  }
+
+  function updateFullscreenIcons() {
+    const fs = isFullscreen();
+    const icon = fs ? "🗗" : "⛶";
+    const text = fs ? "Exit Fullscreen" : "Fullscreen";
+    if (btnTouchFullscreen) {
+      btnTouchFullscreen.innerHTML = `<span class="icon">${icon}</span>`;
+      btnTouchFullscreen.setAttribute("aria-label", text);
+    }
+    if (btnFullscreenMenu) {
+      btnFullscreenMenu.innerHTML = `<span class="fs-icon">${icon}</span> ${text}`;
+    }
+    if (btnFullscreenPause) {
+      btnFullscreenPause.innerHTML = `${icon} ${text}`;
+    }
+  }
+
+  document.addEventListener("fullscreenchange", updateFullscreenIcons);
+  document.addEventListener("webkitfullscreenchange", updateFullscreenIcons);
+
+  // Orientation Check for Mobile
+  function checkOrientation() {
+    if (controlMode !== "mobile" || orientationDismissed) {
+      document.body.classList.remove("orientation-alert");
+      return;
+    }
+    const isPortrait = window.innerHeight > window.innerWidth;
+    if (isPortrait) {
+      document.body.classList.add("orientation-alert");
+    } else {
+      document.body.classList.remove("orientation-alert");
+    }
+  }
+
+  window.addEventListener("resize", checkOrientation);
+  window.addEventListener("orientationchange", checkOrientation);
+  if (btnDismissOrientation) {
+    btnDismissOrientation.addEventListener("click", () => {
+      orientationDismissed = true;
+      document.body.classList.remove("orientation-alert");
+    });
   }
 
   function resetRun() {
@@ -413,12 +563,35 @@
     sfx("jump");
   }
 
+  function openStartMenu() {
+    world.mode = modes.TITLE;
+    world.player = createPlayer();
+    setAnim(world.player, "idle");
+    updateBestScoreDisplays();
+    showOverlay(startMenuEl);
+  }
+
   function startGame() {
     ensureAudio();
-    if (audioCtx && audioCtx.state === "suspended") audioCtx.resume();
+    if (audioCtx && audioCtx.state === "suspended") {
+      audioCtx.resume().catch(() => {});
+    }
     resetRun();
     world.mode = modes.PLAY;
+    hideAllOverlays();
     sfx("start");
+  }
+
+  function pauseGame() {
+    if (world.mode !== modes.PLAY) return;
+    world.mode = modes.PAUSE;
+    showOverlay(pauseMenuEl);
+  }
+
+  function resumeGame() {
+    if (world.mode !== modes.PAUSE) return;
+    world.mode = modes.PLAY;
+    hideAllOverlays();
   }
 
   function gameOver() {
@@ -427,6 +600,14 @@
     localStorage.setItem("tct-best", String(world.best));
     setAnim(world.player, "fall");
     sfx("hit");
+
+    if (goScore) goScore.textContent = String(Math.floor(world.score));
+    if (goCoins) goCoins.textContent = String(world.coins);
+    if (goDistance) goDistance.textContent = (world.distance / 28).toFixed(0) + " m";
+    if (goBest) goBest.textContent = String(Math.floor(world.best));
+    updateBestScoreDisplays();
+
+    showOverlay(gameOverEl);
   }
 
   function updatePlayer(dt) {
@@ -573,8 +754,8 @@
   function handleModeInput() {
     if (input.pauseQueued) {
       input.pauseQueued = false;
-      if (world.mode === modes.PLAY) world.mode = modes.PAUSE;
-      else if (world.mode === modes.PAUSE) world.mode = modes.PLAY;
+      if (world.mode === modes.PLAY) pauseGame();
+      else if (world.mode === modes.PAUSE) resumeGame();
     }
     if (world.mode === modes.TITLE && input.jumpQueued) {
       input.jumpQueued = false;
@@ -738,45 +919,11 @@
     drawText("DISTANCE", 432, 32, 12, "#c9d2ef");
     drawText((world.distance / 28).toFixed(0) + " m", 432, 58, 24, "#f4f1e8");
 
-    drawHudPanel(CANVAS_W - 150, 14, 134, 44);
-    drawText(world.mode === modes.PAUSE ? "PAUSED" : "P / ESC", CANVAS_W - 83, 36, 14, "#ffd24a", "center");
-  }
-
-  function drawTitle() {
-    ctx.fillStyle = "rgba(5,8,18,0.38)";
-    ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
-    drawHudPanel(170, 78, 620, 360);
-    if (images.portrait) {
-      ctx.drawImage(images.portrait, 196, 128, 128, 206);
+    // In desktop mode, display hotkey guide at top-right
+    if (controlMode === "desktop") {
+      drawHudPanel(CANVAS_W - 150, 14, 134, 44);
+      drawText(world.mode === modes.PAUSE ? "PAUSED" : "P / ESC", CANVAS_W - 83, 36, 14, "#ffd24a", "center");
     }
-    drawText("TRASH CAN TREASURE", 360, 130, 28, "#ffe789");
-    drawText("Night run through the city. Jump the cans.", 360, 168, 16, "#c9d2ef");
-    drawText("Space / ↑ / W / Click  —  Jump", 360, 220, 16, "#f4f1e8");
-    drawText("Esc or P  —  Pause", 360, 246, 16, "#f4f1e8");
-    drawText("Collect gold, crown, and blue coins.", 360, 280, 16, "#c9d2ef");
-    drawText("Press Jump to start", 360, 340, 22, "#7dffb0");
-    if (world.best > 0) drawText("Best score  " + Math.floor(world.best), 360, 382, 15, "#9aa8d1");
-  }
-
-  function drawPause() {
-    ctx.fillStyle = "rgba(5,8,18,0.45)";
-    ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
-    drawHudPanel(280, 190, 400, 140);
-    drawText("PAUSED", 480, 230, 32, "#ffe789", "center");
-    drawText("Press Esc or P to resume", 480, 278, 16, "#c9d2ef", "center");
-  }
-
-  function drawOver() {
-    ctx.fillStyle = "rgba(5,8,18,0.5)";
-    ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
-    drawHudPanel(230, 120, 500, 300);
-    if (images.portrait) ctx.drawImage(images.portrait, 258, 168, 90, 145);
-    drawText("GAME OVER", 380, 160, 30, "#ff8d7a");
-    drawText("Score  " + Math.floor(world.score), 380, 210, 22, "#ffe789");
-    drawText("Coins  " + world.coins, 380, 242, 18, "#ffd24a");
-    drawText("Distance  " + (world.distance / 28).toFixed(0) + " m", 380, 272, 18, "#c9d2ef");
-    drawText("Best  " + Math.floor(world.best), 380, 304, 16, "#9aa8d1");
-    drawText("Jump or click to restart", 480, 372, 18, "#7dffb0", "center");
   }
 
   function drawLoading() {
@@ -805,10 +952,9 @@
     }
     drawBackground();
     drawWorld();
-    drawHud();
-    if (world.mode === modes.TITLE) drawTitle();
-    if (world.mode === modes.PAUSE) drawPause();
-    if (world.mode === modes.OVER) drawOver();
+    if (world.mode !== modes.TITLE) {
+      drawHud();
+    }
     drawMissing();
   }
 
@@ -837,6 +983,7 @@
     return tag === "INPUT" || tag === "TEXTAREA" || el.isContentEditable;
   }
 
+  // Keyboard Event Listeners
   window.addEventListener("keydown", (e) => {
     if (isTypingTarget(e.target)) return;
     const code = e.code;
@@ -872,16 +1019,29 @@
     }
   }
 
+  // Canvas Direct Pointer Interaction
   canvas.addEventListener("pointerdown", (e) => {
-    e.preventDefault();
-    queueJump();
-  });
-  canvas.addEventListener("mousedown", (e) => {
-    if (e.button === 0) {
+    if (world.mode === modes.PLAY) {
       e.preventDefault();
+      // Check if clicked the desktop pause button in canvas top right
+      if (controlMode === "desktop") {
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = CANVAS_W / rect.width;
+        const scaleY = CANVAS_H / rect.height;
+        const clickX = (e.clientX - rect.left) * scaleX;
+        const clickY = (e.clientY - rect.top) * scaleY;
+        if (clickX >= CANVAS_W - 155 && clickX <= CANVAS_W - 10 && clickY >= 10 && clickY <= 65) {
+          pauseGame();
+          return;
+        }
+      }
       queueJump();
+    } else if (world.mode === modes.OVER) {
+      e.preventDefault();
+      startGame();
     }
   });
+
   window.addEventListener("pointerup", () => {
     input.jumpHeld = false;
   });
@@ -891,27 +1051,133 @@
 
   canvas.addEventListener("contextmenu", (e) => e.preventDefault());
 
+  // Setup Touch Controls
+  function setupTouchControls() {
+    if (!btnTouchJump) return;
+
+    const pressJump = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      btnTouchJump.classList.add("active");
+      queueJump();
+    };
+
+    const releaseJump = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      btnTouchJump.classList.remove("active");
+      input.jumpHeld = false;
+    };
+
+    btnTouchJump.addEventListener("pointerdown", pressJump);
+    btnTouchJump.addEventListener("pointerup", releaseJump);
+    btnTouchJump.addEventListener("pointercancel", releaseJump);
+    btnTouchJump.addEventListener("touchstart", pressJump, { passive: false });
+    btnTouchJump.addEventListener("touchend", releaseJump, { passive: false });
+    btnTouchJump.addEventListener("touchcancel", releaseJump, { passive: false });
+
+    if (btnTouchPause) {
+      btnTouchPause.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (world.mode === modes.PLAY) pauseGame();
+        else if (world.mode === modes.PAUSE) resumeGame();
+      });
+    }
+
+    if (btnTouchFullscreen) {
+      btnTouchFullscreen.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        toggleFullscreen();
+      });
+    }
+  }
+
+  // Setup Menu Button Listeners
+  function setupUIListeners() {
+    if (btnPlay) {
+      btnPlay.addEventListener("click", () => {
+        startGame();
+      });
+    }
+
+    if (btnFullscreenMenu) {
+      btnFullscreenMenu.addEventListener("click", () => {
+        toggleFullscreen();
+      });
+    }
+
+    if (btnFullscreenPause) {
+      btnFullscreenPause.addEventListener("click", () => {
+        toggleFullscreen();
+      });
+    }
+
+    // Mode Selector buttons
+    if (modeDesktopBtn) {
+      modeDesktopBtn.addEventListener("click", () => setControlMode("desktop"));
+    }
+    if (modeMobileBtn) {
+      modeMobileBtn.addEventListener("click", () => setControlMode("mobile"));
+    }
+    if (pauseModeDesktopBtn) {
+      pauseModeDesktopBtn.addEventListener("click", () => setControlMode("desktop"));
+    }
+    if (pauseModeMobileBtn) {
+      pauseModeMobileBtn.addEventListener("click", () => setControlMode("mobile"));
+    }
+
+    // Pause Dialog buttons
+    if (btnResume) {
+      btnResume.addEventListener("click", () => resumeGame());
+    }
+    if (btnRestartPause) {
+      btnRestartPause.addEventListener("click", () => startGame());
+    }
+    if (btnMainMenuPause) {
+      btnMainMenuPause.addEventListener("click", () => openStartMenu());
+    }
+
+    // Game Over Dialog buttons
+    if (btnRestartGo) {
+      btnRestartGo.addEventListener("click", () => startGame());
+    }
+    if (btnMainMenuGo) {
+      btnMainMenuGo.addEventListener("click", () => openStartMenu());
+    }
+  }
+
+  // Initialization
+  setControlMode(controlMode);
+  setupTouchControls();
+  setupUIListeners();
+  updateFullscreenIcons();
+
   loadAll().then(() => {
-    world.mode = modes.TITLE;
+    openStartMenu();
     world.player = createPlayer();
     seedDecor();
   });
+
   requestAnimationFrame(loop);
 
+  // Global API
   window.TCT = {
     start: startGame,
-    pause() {
-      if (world.mode === modes.PLAY) world.mode = modes.PAUSE;
-    },
-    resume() {
-      if (world.mode === modes.PAUSE) world.mode = modes.PLAY;
-    },
+    pause: pauseGame,
+    resume: resumeGame,
+    returnToMenu: openStartMenu,
+    setMode: setControlMode,
+    toggleFullscreen: toggleFullscreen,
     snapshot() {
       return {
         mode: world.mode,
+        controlMode,
         score: Math.floor(world.score),
         coins: world.coins,
         distance: Math.floor(world.distance),
+        best: Math.floor(world.best),
         obstacles: world.obstacles.length,
         pickups: world.pickups.length,
         anim: world.player.anim,
