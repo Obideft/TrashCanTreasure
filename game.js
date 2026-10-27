@@ -30,7 +30,7 @@
   const btnMainMenuPause = document.getElementById("btn-main-menu-pause");
   const btnRestartGo = document.getElementById("btn-restart-go");
   const btnMainMenuGo = document.getElementById("btn-main-menu-go");
-  const btnDismissOrientation = document.getElementById("btn-dismiss-orientation");
+  const btnDismissOrientation = document.getElementById("btn-dismiss-orientation");\n  const btnSaveScore = document.getElementById("btn-save-score");\n  const btnShareScore = document.getElementById("btn-share-score");\n  const scoreShareStatus = document.getElementById("score-share-status");
 
   const goScore = document.getElementById("go-score");
   const goCoins = document.getElementById("go-coins");
@@ -594,6 +594,120 @@
     hideAllOverlays();
   }
 
+
+  function scoreCardCanvas() {
+    const card = document.createElement("canvas");
+    card.width = 1200;
+    card.height = 675;
+    const c = card.getContext("2d");
+    const g = c.createLinearGradient(0, 0, 1200, 675);
+    g.addColorStop(0, "#08111f");
+    g.addColorStop(0.55, "#17223c");
+    g.addColorStop(1, "#080b16");
+    c.fillStyle = g;
+    c.fillRect(0, 0, card.width, card.height);
+
+    // Neon frame and subtle scanline texture.
+    c.strokeStyle = "#ffd24a";
+    c.lineWidth = 5;
+    c.strokeRect(24, 24, 1152, 627);
+    c.strokeStyle = "rgba(79,195,247,.35)";
+    c.lineWidth = 2;
+    c.strokeRect(38, 38, 1124, 599);
+    for (let y = 50; y < 630; y += 8) {
+      c.fillStyle = "rgba(255,255,255,.025)";
+      c.fillRect(45, y, 1110, 1);
+    }
+
+    c.textAlign = "center";
+    c.fillStyle = "#7dffb0";
+    c.font = "800 25px Trebuchet MS, sans-serif";
+    c.fillText("FROGINALS RECRUITMENT QUEST · STAGE 02", 600, 92);
+    c.fillStyle = "#fff2a8";
+    c.font = "900 53px Trebuchet MS, sans-serif";
+    c.fillText("TRASH CAN TREASURE", 600, 157);
+    c.fillStyle = "#c9d2ef";
+    c.font = "700 23px Trebuchet MS, sans-serif";
+    c.fillText("NIGHT RUNNER • SCORE REPORT", 600, 198);
+
+    c.fillStyle = "rgba(4,8,20,.72)";
+    c.fillRect(95, 230, 1010, 235);
+    c.strokeStyle = "rgba(255,210,74,.55)";
+    c.lineWidth = 2;
+    c.strokeRect(95, 230, 1010, 235);
+
+    c.fillStyle = "#c9d2ef";
+    c.font = "800 22px Trebuchet MS, sans-serif";
+    c.fillText("FINAL SCORE", 600, 280);
+    c.shadowColor = "#ffd24a";
+    c.shadowBlur = 24;
+    c.fillStyle = "#ffd24a";
+    c.font = "900 112px Trebuchet MS, sans-serif";
+    c.fillText(String(Math.floor(world.score)), 600, 390);
+    c.shadowBlur = 0;
+
+    c.fillStyle = "#ffffff";
+    c.font = "800 25px Trebuchet MS, sans-serif";
+    c.fillText("🪙 COINS  " + world.coins + "     •     DISTANCE  " + (world.distance / 28).toFixed(0) + " m", 600, 438);
+
+    const qualified = world.score >= 1000;
+    c.fillStyle = qualified ? "#7dffb0" : "#ffcf70";
+    c.font = "900 27px Trebuchet MS, sans-serif";
+    c.fillText(qualified ? "MISSION TARGET REACHED: 1,000 POINTS!" : "MISSION TARGET: 1,000 POINTS", 600, 525);
+    c.fillStyle = "#c9d2ef";
+    c.font = "600 18px Trebuchet MS, sans-serif";
+    c.fillText("Post this score card in the TrashCanTreasure Discord channel", 600, 572);
+    c.fillStyle = "rgba(255,255,255,.7)";
+    c.font = "600 14px Trebuchet MS, sans-serif";
+    c.fillText("PLAYER SCORE IS SELF-REPORTED • FROGINALS", 600, 610);
+    return card;
+  }
+
+  function setScoreShareStatus(message) {
+    if (scoreShareStatus) scoreShareStatus.textContent = message;
+  }
+
+  function downloadScoreCard() {
+    const card = scoreCardCanvas();
+    const link = document.createElement("a");
+    link.download = "trash-can-treasure-score-" + Math.floor(world.score) + ".png";
+    link.href = card.toDataURL("image/png");
+    link.click();
+    setScoreShareStatus("Score screenshot saved. Open Discord, enter the TrashCanTreasure channel, and attach the PNG.");
+  }
+
+  async function shareScoreCard() {
+    const card = scoreCardCanvas();
+    const caption = "🐸 Trash Can Treasure score: " + Math.floor(world.score) +
+      " points | " + world.coins + " coins | " + (world.distance / 28).toFixed(0) +
+      " m. FROGINALS Recruitment Quest target: 1,000 points. #TrashCanTreasure";
+    try {
+      const blob = await new Promise((resolve, reject) => {
+        card.toBlob((value) => value ? resolve(value) : reject(new Error("Could not create score image.")), "image/png");
+      });
+      const file = new File([blob], "trash-can-treasure-score-" + Math.floor(world.score) + ".png", { type: "image/png" });
+      if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ title: "Trash Can Treasure Score", text: caption, files: [file] });
+        setScoreShareStatus("Share sheet opened. Choose Discord, then post the score card in the TrashCanTreasure channel.");
+        return;
+      }
+      downloadScoreCard();
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(caption);
+        setScoreShareStatus("Screenshot downloaded and score caption copied. In Discord, paste the caption and attach the PNG.");
+      } else {
+        setScoreShareStatus("Screenshot downloaded. Attach it in the TrashCanTreasure Discord channel and add your score.");
+      }
+    } catch (error) {
+      if (error && error.name === "AbortError") {
+        setScoreShareStatus("Share cancelled. You can still save the screenshot and upload it to Discord.");
+        return;
+      }
+      downloadScoreCard();
+      setScoreShareStatus("Screenshot downloaded. Upload the PNG to the TrashCanTreasure Discord channel.");
+    }
+  }
+
   function gameOver() {
     world.mode = modes.OVER;
     world.best = Math.max(world.best, world.score);
@@ -1140,7 +1254,7 @@
     }
 
     // Game Over Dialog buttons
-    if (btnRestartGo) {
+    if (btnSaveScore) btnSaveScore.addEventListener("click", downloadScoreCard);\n    if (btnShareScore) btnShareScore.addEventListener("click", shareScoreCard);\n\n    if (btnRestartGo) {
       btnRestartGo.addEventListener("click", () => startGame());
     }
     if (btnMainMenuGo) {
