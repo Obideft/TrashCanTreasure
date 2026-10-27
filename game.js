@@ -719,6 +719,7 @@
     if (goCoins) goCoins.textContent = String(world.coins);
     if (goDistance) goDistance.textContent = (world.distance / 28).toFixed(0) + " m";
     if (goBest) goBest.textContent = String(Math.floor(world.best));
+    setScoreShareStatus(world.score >= 1000 ? "🎉 1,000-point target reached! Save your score card and post it in Discord." : "Keep going! Your current mission target is 1,000 points. Save and share your score card in Discord.");
     updateBestScoreDisplays();
 
     showOverlay(gameOverEl);
@@ -1254,7 +1255,10 @@
     }
 
     // Game Over Dialog buttons
-    if (btnSaveScore) btnSaveScore.addEventListener("click", downloadScoreCard);\n    if (btnShareScore) btnShareScore.addEventListener("click", shareScoreCard);\n\n    if (btnRestartGo) {
+    if (btnSaveScore) btnSaveScore.addEventListener("click", downloadScoreCard);
+    if (btnShareScore) btnShareScore.addEventListener("click", shareScoreCard);
+
+    if (btnRestartGo) {
       btnRestartGo.addEventListener("click", () => startGame());
     }
     if (btnMainMenuGo) {
