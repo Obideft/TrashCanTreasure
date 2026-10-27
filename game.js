@@ -693,7 +693,7 @@
       });
 
       // Set this URL after deploying backend/discord-score-worker.js.
-      const SCORE_SUBMISSION_ENDPOINT = "PASTE_CLOUDFLARE_WORKER_URL_HERE";
+      const SCORE_SUBMISSION_ENDPOINT = "https://muddy-lake-056f.jmaxlogo03.workers.dev";
       if (SCORE_SUBMISSION_ENDPOINT.startsWith("https://") &&
           !SCORE_SUBMISSION_ENDPOINT.includes("PASTE_CLOUDFLARE_WORKER_URL_HERE")) {
         setScoreShareStatus("Submitting your score to the FROGINALS Discord channel...");
