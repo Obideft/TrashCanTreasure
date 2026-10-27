@@ -734,3 +734,71 @@ body.mode-mobile.orientation-alert .orientation-overlay {
     font-size: 15px;
   }
 }
+
+
+/* ==========================================================================
+   FROGINALS RECRUITMENT QUEST + SCORE SHARING
+   ========================================================================== */
+.recruitment-quest {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-top: 10px;
+  padding: 10px 12px;
+  border: 1px solid rgba(125, 255, 176, .45);
+  border-radius: 10px;
+  background: linear-gradient(135deg, rgba(125,255,176,.12), rgba(255,210,74,.08));
+  box-shadow: inset 3px 0 0 var(--green);
+}
+.quest-kicker {
+  color: var(--green);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .08em;
+}
+.recruitment-quest strong {
+  color: var(--gold);
+  font-size: 13px;
+  letter-spacing: .04em;
+}
+.recruitment-quest > span:last-child {
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.4;
+}
+.score-share-panel {
+  margin-top: 4px;
+  padding: 12px;
+  border: 1px solid rgba(79,195,247,.25);
+  border-radius: 12px;
+  background: rgba(8,12,28,.72);
+}
+.score-share-status {
+  color: var(--green);
+  font-size: 12px;
+  line-height: 1.45;
+  margin-bottom: 10px;
+}
+.score-share-actions {
+  display: flex;
+  gap: 8px;
+}
+.score-share-actions .action-btn {
+  min-height: 44px;
+  font-size: 11px;
+  padding: 10px;
+}
+.score-share-note {
+  margin-top: 9px;
+  color: var(--text-muted);
+  font-size: 10px;
+  line-height: 1.4;
+}
+@media (max-width: 520px) {
+  .recruitment-quest { margin-top: 8px; padding: 8px 10px; }
+  .quest-kicker { font-size: 9px; }
+  .recruitment-quest strong { font-size: 12px; }
+  .recruitment-quest > span:last-child { font-size: 10px; }
+  .score-share-actions { flex-direction: column; }
+  .score-share-actions .action-btn { width: 100%; }
+}
