@@ -681,14 +681,35 @@
 
   async function shareScoreCard() {
     const card = scoreCardCanvas();
-    const caption = "🐸 Trash Can Treasure score: " + Math.floor(world.score) +
-      " points | " + world.coins + " coins | " + (world.distance / 28).toFixed(0) +
+    const score = Math.floor(world.score);
+    const coins = Math.floor(world.coins);
+    const distance = Math.floor(world.distance / 28);
+    const caption = "🐸 Trash Can Treasure score: " + score +
+      " points | " + coins + " coins | " + distance +
       " m. FROGINALS Recruitment Quest target: 1,000 points. #TrashCanTreasure";
     try {
       const blob = await new Promise((resolve, reject) => {
         card.toBlob((value) => value ? resolve(value) : reject(new Error("Could not create score image.")), "image/png");
       });
-      const file = new File([blob], "trash-can-treasure-score-" + Math.floor(world.score) + ".png", { type: "image/png" });
+
+      // Set this URL after deploying backend/discord-score-worker.js.
+      const SCORE_SUBMISSION_ENDPOINT = "PASTE_CLOUDFLARE_WORKER_URL_HERE";
+      if (SCORE_SUBMISSION_ENDPOINT.startsWith("https://") &&
+          !SCORE_SUBMISSION_ENDPOINT.includes("PASTE_CLOUDFLARE_WORKER_URL_HERE")) {
+        setScoreShareStatus("Submitting your score to the FROGINALS Discord channel...");
+        const form = new FormData();
+        form.set("score", String(score));
+        form.set("coins", String(coins));
+        form.set("distance", String(distance));
+        form.set("scoreCard", blob, "trash-can-treasure-score-" + score + ".png");
+        const response = await fetch(SCORE_SUBMISSION_ENDPOINT, { method: "POST", body: form });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok || !result.success) throw new Error(result.error || "Score submission failed.");
+        setScoreShareStatus("Score submitted to Discord! Submission ID: " + result.submissionId + ". Status: PENDING VERIFICATION.");
+        return;
+      }
+
+      const file = new File([blob], "trash-can-treasure-score-" + score + ".png", { type: "image/png" });
       if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
         await navigator.share({ title: "Trash Can Treasure Score", text: caption, files: [file] });
         setScoreShareStatus("Share sheet opened. Choose Discord, then post the score card in the TrashCanTreasure channel.");
@@ -697,17 +718,18 @@
       downloadScoreCard();
       if (navigator.clipboard && navigator.clipboard.writeText) {
         await navigator.clipboard.writeText(caption);
-        setScoreShareStatus("Screenshot downloaded and score caption copied. In Discord, paste the caption and attach the PNG.");
+        setScoreShareStatus("Score screenshot downloaded and caption copied. Finish the Discord setup to enable automatic posting.");
       } else {
-        setScoreShareStatus("Screenshot downloaded. Attach it in the TrashCanTreasure Discord channel and add your score.");
+        setScoreShareStatus("Score screenshot downloaded. Finish the Discord setup to enable automatic posting.");
       }
     } catch (error) {
       if (error && error.name === "AbortError") {
-        setScoreShareStatus("Share cancelled. You can still save the screenshot and upload it to Discord.");
+        setScoreShareStatus("Share cancelled. You can still save the screenshot.");
         return;
       }
       downloadScoreCard();
-      setScoreShareStatus("Screenshot downloaded. Upload the PNG to the TrashCanTreasure Discord channel.");
+      setScoreShareStatus("Automatic submission isn't configured or failed. Screenshot saved. " +
+        (error && error.message ? error.message : "Please try again later."));
     }
   }
 
