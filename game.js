@@ -30,7 +30,10 @@
   const btnMainMenuPause = document.getElementById("btn-main-menu-pause");
   const btnRestartGo = document.getElementById("btn-restart-go");
   const btnMainMenuGo = document.getElementById("btn-main-menu-go");
-  const btnDismissOrientation = document.getElementById("btn-dismiss-orientation");\n  const btnSaveScore = document.getElementById("btn-save-score");\n  const btnShareScore = document.getElementById("btn-share-score");\n  const scoreShareStatus = document.getElementById("score-share-status");
+  const btnDismissOrientation = document.getElementById("btn-dismiss-orientation");
+  const btnSaveScore = document.getElementById("btn-save-score");
+  const btnShareScore = document.getElementById("btn-share-score");
+  const scoreShareStatus = document.getElementById("score-share-status");
 
   const goScore = document.getElementById("go-score");
   const goCoins = document.getElementById("go-coins");
